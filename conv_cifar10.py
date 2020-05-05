@@ -10,7 +10,7 @@ import torch.optim as optim
 log_interval = 100
 device = torch.device("cuda") #run on GPU
 Batch_size = 128 # train in batches
-epoch = 5   # amount of training iterations before testing
+epoch = 10   # amount of training iterations before testing
 net_list =[1,2,3]
 net_choice =net_list[2]
 
@@ -51,7 +51,7 @@ class ConvNet_2(nn.Module):
     super(ConvNet_2, self).__init__() #Super???************************
     self.CONV_Layer_1 = nn.Conv2d(in_channels = 3, out_channels=16,        
                                   kernel_size= 5, stride=1, padding=0)
-    self.CONV_Layer_2 = nn.Conv2d(in_channels = 3, out_channels=32,        
+    self.CONV_Layer_2 = nn.Conv2d(in_channels = 16, out_channels=32,        
                                   kernel_size= 4, stride=1, padding=0)
     
     #32-5+1 = 28 -> 28-4+1 = 25
@@ -69,31 +69,31 @@ class ConvNet_3(nn.Module):
     super(ConvNet_3, self).__init__() #Super???************************
     self.CONV_Layer_1 = nn.Conv2d(in_channels = 3, out_channels=64,        
                                   kernel_size= 4, stride=1, padding=0)
-    self.CONV_Layer_2 = nn.Conv2d(in_channels = 3, out_channels=256,        
+    self.CONV_Layer_2 = nn.Conv2d(in_channels = 64, out_channels=256,        
                                   kernel_size= 4, stride=1, padding=0)
-    self.CONV_Layer_3 = nn.Conv2d(in_channels = 3, out_channels=64,        
+    self.CONV_Layer_3 = nn.Conv2d(in_channels = 256, out_channels=64,        
                                   kernel_size= 3, stride=1, padding=0)
     
-    #32-5+1 = 28 -> 28-4+1 = 25 -> 25-3+1 = 23
-    self.FC_Layer_1 = nn.Linear(23*23*64, 10) 
+    #32-4+1 = 29 -> 29-4+1 = 26 -> 26-3+1 = 24
+    self.FC_Layer_1 = nn.Linear(24*24*64, 10) 
 
   def forward(self,x):
     x = F.relu(self.CONV_Layer_1(x))
     x = F.relu(self.CONV_Layer_2(x))
-    x = F.relu(self.CONV_Layer_2(x))
+    x = F.relu(self.CONV_Layer_3(x))
     x = x.view(x.size(0), -1)##################???????????????????? Flatten
     x = self.FC_Layer_1(x)
     return x
 
 def train_network(epoch):
   setSize = len(Training_DataLoader)
-  Fully_connected_EX.train()
+  Conv_EX.train()
   for batchIndex, (inputData, targetLabel) in enumerate(Training_DataLoader):
     #send input and target to GPU
     inputData = inputData.to(device) 
     targetLabel = targetLabel.to(device)
     SGD_Optimizer.zero_grad() #compute gradient
-    output = Fully_connected_EX(inputData) #get output from the model
+    output = Conv_EX(inputData) #get output from the model
     loss = criterion(output,targetLabel) #Cross Entropy Loss
     loss.backward() #Back Propogation
     SGD_Optimizer.step() # Update parameters
@@ -102,7 +102,7 @@ def train_network(epoch):
         epoch, 100. * batchIndex / setSize, loss.item()))
 
 def validate_network(epoch):
-  Fully_connected_EX.eval()
+  Conv_EX.eval()
   validation_loss = 0
   correct = 0
   setSize = len(Validation_DataLoader.dataset)
@@ -110,7 +110,7 @@ def validate_network(epoch):
     for inputData, targetLabel in (Validation_DataLoader):
       inputData = inputData.to(device)
       targetLabel = targetLabel.to(device)
-      output = Fully_connected_EX(inputData)  #get output from the model
+      output = Conv_EX(inputData)  #get output from the model
       validation_loss += criterion(output,targetLabel)
       predition_label = output.data.max(1, keepdim=True)[1] #get prediction
       #add correct predictions
@@ -122,7 +122,7 @@ def validate_network(epoch):
     100. * correct / setSize))
 
 def test_network():
-  Fully_connected_EX.eval()
+  Conv_EX.eval()
   validation_loss = 0
   correct = 0
   setSize = len(Test_DataLoader.dataset)
@@ -130,7 +130,7 @@ def test_network():
     for inputData, targetLabel in (Test_DataLoader):
       inputData = inputData.to(device)
       targetLabel = targetLabel.to(device)
-      output = Fully_connected_EX(inputData)  
+      output = Conv_EX(inputData)  
       validation_loss += criterion(output,targetLabel)
       predition_label = output.data.max(1, keepdim=True)[1]
       correct += predition_label.eq(targetLabel.data.view_as(predition_label)).sum()
@@ -142,38 +142,24 @@ def test_network():
   accuracy = correct / setSize
   return accuracy
 
-def run(net_choice):
-  if net_choice == 1:
-    Fully_connected_EX = ConvNet_1().to(device) #send to GPU
-  if net_choice == 2:
-    Fully_connected_EX = ConvNet_2().to(device)
-  if net_choice == 3:
-    Fully_connected_EX = ConvNet_3().to(device)
-  learning_rate_SGD = 0.001
-  momentum_SGD = 0.9
+if net_choice == 1:
+  Conv_EX = ConvNet_1().to(device) #send to GPU
+if net_choice == 2:
+  Conv_EX = ConvNet_2().to(device)
+if net_choice == 3:
+  Conv_EX = ConvNet_3().to(device)
+learning_rate_SGD = 0.001
+momentum_SGD = 0.9
   #optimize with Stochastic Gradient descent
-  SGD_Optimizer = optim.SGD(Fully_connected_EX.parameters(), 
-  lr = learning_rate_SGD, momentum = momentum_SGD)
-  criterion = nn.CrossEntropyLoss() 
+SGD_Optimizer = optim.SGD(Conv_EX.parameters(), 
+lr = learning_rate_SGD, momentum = momentum_SGD)
+criterion = nn.CrossEntropyLoss() 
 
-  validate_network(0)
-  for i in range(1,epoch+1):
-    train_network(i)
-    validate_network(i)
-  result = test_network()
-  return result
+validate_network(0)
+for i in range(1,epoch+1):
+  train_network(i)
+  validate_network(i)
+result = test_network()
 
-def main():
-  threshold = 0.67
-  counter = 0
-  if counter == 0:
-    result = 0
-  else:
-    result = run(net_choice)
-  while result < threshold:
-    print('\nNumber of Runs: {}\n'.format(
-    counter))
-    counter +=1
-    run(net_choice)
-main()
+
 
