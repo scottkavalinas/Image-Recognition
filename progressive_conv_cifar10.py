@@ -10,9 +10,8 @@ import torch.optim as optim
 log_interval = 100
 device = torch.device("cuda") #run on GPU
 Batch_size = 128 # train in batches
-epoch = 1   # amount of training iterations before testing
-net_list =[1,2,3]
-net_choice =net_list[2]
+epoch = 5   # amount of training iterations before testing
+
 
 CIFAR10_Train = Set.CIFAR10('/CIFAR10_dataset/', train=True, download=True,
                                transform=T.Compose([T.RandomCrop(32, padding=4),
